@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get In Fit Enterprise | Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; }
+        .slot-btn { transition: all 0.2s; cursor: pointer; }
+        .slot-empty { background-color: #065f46; border: 1px solid #10b981; }
+        .slot-partial { background-color: #854d0e; border: 1px solid #eab308; }
+        .slot-filled { background-color: #7f1d1d; border: 1px solid #ef4444; }
+        .hidden-section { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- LOGIN INTERFACE -->
+    <div id="loginSection" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
+        <div class="card p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+            <div class="text-5xl text-blue-500 mb-4"><i class="fas fa-lock"></i></div>
+            <h2 class="text-2xl font-bold mb-6">Get In Fit Admin Login</h2>
+            <div class="space-y-4">
+                <input type="text" id="loginUser" placeholder="Username" class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-blue-500 text-white">
+                <input type="password" id="loginPass" placeholder="Password" class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-blue-500 text-white">
+                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition shadow-lg text-white">Login Now</button>
+            </div>
+            <p id="loginError" class="text-red-400 text-sm mt-4 hidden">❌ Invalid Username or Password!</p>
+            <div class="mt-6 pt-4 border-t border-slate-700">
+                <button onclick="resetPassword()" class="text-xs text-gray-500 hover:text-gray-300 underline">Forgot Password? Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP INTERFACE -->
+    <div id="appSection" class="hidden-section p-4 md:p-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <h1 class="text-3xl font-bold text-blue-400"><i class="fas fa-dumbbell mr-2"></i> Get In Fit <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded ml-2">Enterprise</span></h1>
+            <div class="flex gap-4 items-center">
+                <div id="currentDate" class="text-gray-400 font-mono"></div>
+                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-bold transition text-white">
+                    <i class="fas fa-file-excel mr-2"></i>Export Detailed Excel
+                </button>
+                <button onclick="openSettings()" class="text-gray-400 hover:text-white transition"><i class="fas fa-cog"></i> Settings</button>
+                <button onclick="handleLogout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold transition">Logout</button>
+            </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="card p-6 rounded-xl flex items-center gap-4">
+                <div class="p-4 bg-blue-500/20 text-blue-400 rounded-lg text-2xl"><i class="fas fa-user-tie"></i></div>
+                <div><p class="text-gray-400 text-sm">Total Trainers</p><h3 id="statTrainers" class="text-2xl font-bold">0</h3></div>
+            </div>
+            <div class="card p-6 rounded-xl flex items-center gap-4">
+                <div class="p-4 bg-purple-500/20 text-purple-400 rounded-lg text-2xl"><i class="fas fa-users"></i></div>
+                <div><p class="text-gray-400 text-sm">Master Clients</p><h3 id="statClients" class="text-2xl font-bold">0</h3></div>
+            </div>
+            <div class="card p-6 rounded-xl flex items-center gap-4">
+                <div class="p-4 bg-green-500/20 text-green-400 rounded-lg text-2xl"><i class="fas fa-calendar-check"></i></div>
+                <div><p class="text-gray-400 text-sm">Total Bookings Today</p><h3 id="statBookings" class="text-2xl font-bold">0</h3></div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="space-y-6 lg:col-span-1">
+                <div class="card p-5 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold mb-4 text-blue-300"><i class="fas fa-user-tie mr-2"></i>Trainers</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="trainerName" placeholder="Name" class="flex-1 p-2 rounded bg-slate-700 border border-slate-600 text-sm text-white">
+                        <button onclick="addTrainer()" class="bg-blue-600 px-3 py-2 rounded font-bold text-sm">Add</button>
+                    </div>
+                    <div id="trainersList" class="space-y-2 max-h-32 overflow-y-auto text-xs"></div>
+                </div>
+
+                <div class="card p-5 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold mb-4 text-green-300"><i class="fas fa-clock mr-2"></i>Permanent Shift</h2>
+                    <div class="space-y-3">
+                        <select id="shiftTrainer" class="w-full p-2 rounded bg-slate-700 border border-slate-600 text-sm text-white"></select>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="time" id="startTime" class="p-2 rounded bg-slate-700 border border-slate-600 text-xs text-white">
+                            <input type="time" id="endTime" class="p-2 rounded bg-slate-700 border border-slate-600 text-xs text-white">
+                        </div>
+                        <button onclick="addShift()" class="w-full bg-green-600 py-2 rounded font-bold text-sm">Save Shift Timing</button>
+                    </div>
+                </div>
+
+                <div class="card p-5 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold mb-4 text-purple-300"><i class="fas fa-users mr-2"></i>Client Master List</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="clientName" placeholder="Client Name" class="flex-1 p-2 rounded bg-slate-700 border border-slate-600 text-sm text-white">
+                        <button onclick="addClientToMaster()" class="bg-purple-600 px-3 py-2 rounded font-bold text-sm">Add</button>
+                    </div>
+                    <div id="clientsMasterList" class="space-y-2 max-h-32 overflow-y-auto text-xs"></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="card p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <h2 class="text-2xl font-bold mb-6 text-white border-b border-slate-700 pb-4">Availability Dashboard</h2>
+                    <table class="w-full text-left">
+                        <thead class="text-gray-400 text-sm">
+                            <tr class="border-b border-slate-700">
+                                <th class="py-3 px-2">Trainer</th>
+                                <th class="py-3 px-2">Shift Time</th>
+                                <th class="py-3 px-2 text-blue-400">Empty Slots</th>
+                                <th class="py-3 px-2 text-purple-400">Clients Today</th>
+                                <th class="py-3 px-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardBody" class="text-sm"></tbody>
+                    </table>
+                </div>
+
+                <div class="card p-6 rounded-xl shadow-lg overflow-x-auto">
+                    <h2 class="text-2xl font-bold mb-6 text-white border-b border-slate-700 pb-4"><i class="fas fa-list-ul mr-2 text-blue-400"></i>Detailed Client Mapping</h2>
+                    <table class="w-full text-left">
+                        <thead class="text-gray-400 text-sm">
+                            <tr class="border-b border-slate-700">
+                                <th class="py-3 px-2">Trainer</th>
+                                <th class="py-3 px-2">Slot Time</th>
+                                <th class="py-3 px-2 text-purple-400">Tagged Clients</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mappingBody" class="text-sm"></tbody>
+                    </table>
+                </div>
+
+                <div class="card p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-white">Slot Booking System</h2>
+                        <select id="slotTrainerSelect" onchange="renderSlots()" class="p-2 rounded bg-slate-700 border border-slate-600 text-sm text-white"></select>
+                    </div>
+                    <div id="slotsGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-4">
+        <div class="card p-8 rounded-2xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Admin Settings</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400">New Password</label>
+                    <input type="password" id="newPass" class="w-full p-2 rounded bg-slate-700 border border-slate-600 text-white">
+                </div>
+                <button onclick="changePassword()" class="w-full bg-blue-600 py-2 rounded font-bold">Update Password</button>
+                <button onclick="closeSettings()" class="w-full bg-slate-600 py-2 rounded font-bold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let trainers = JSON.parse(localStorage.getItem('gymTrainers')) || [];
+        let shifts = JSON.parse(localStorage.getItem('gymShifts')) || {}; 
+        let slots = JSON.parse(localStorage.getItem('gymSlots')) || {}; 
+        let masterClients = JSON.parse(localStorage.getItem('gymMasterClients')) || [];
+        
+        let currentUsername = "shazzy";
+        let currentPassword = localStorage.getItem('gymPassword') || "shazzy@123";
+
+        function handleLogin() {
+            const user = document.getElementById('loginUser').value.trim().toLowerCase();
+            const pass = document.getElementById('loginPass').value.trim();
+            if(user === currentUsername.toLowerCase() && pass === currentPassword) {
+                document.getElementById('loginSection').classList.add('hidden-section');
+                document.getElementById('appSection').classList.remove('hidden-section');
+                updateUI();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        function resetPassword() {
+            localStorage.setItem('gymPassword', "shazzy@123");
+            currentPassword = "shazzy@123";
+            alert("Password reset to: shazzy@123");
+        }
+
+        function handleLogout() { location.reload(); }
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+        function changePassword() {
+            const np = document.getElementById('newPass').value;
+            if(np) { localStorage.setItem('gymPassword', np); currentPassword = np; alert("Updated!"); closeSettings(); }
+        }
+
+        document.getElementById('currentDate').innerText = new Date().toDateString();
+
+        function addTrainer() {
+            const name = document.getElementById('trainerName').value;
+            if(!name) return;
+            trainers.push(name);
+            saveAndRefresh();
+            document.getElementById('trainerName').value = '';
+        }
+
+        function deleteTrainer(i) { trainers.splice(i, 1); saveAndRefresh(); }
+
+        function addClientToMaster() {
+            const name = document.getElementById('clientName').value;
+            if(!name) return;
+            masterClients.push(name);
+            saveAndRefresh();
+            document.getElementById('clientName').value = '';
+        }
+
+        function deleteClientFromMaster(i) {
+            masterClients.splice(i, 1);
+            saveAndRefresh();
+        }
+
+        function addShift() {
+            const trainer = document.getElementById('shiftTrainer').value;
+            const start = document.getElementById('startTime').value;
+            const end = document.getElementById('endTime').value;
+            if(!trainer || !start || !end) return alert("Fill details");
+            
+            // FIX: Remove date from shift key. Now it's permanent for that trainer.
+            shifts[trainer] = { start, end };
+            saveAndRefresh();
+        }
+
+        function renderSlots() {
+            const trainer = document.getElementById('slotTrainerSelect').value;
+            const grid = document.getElementById('slotsGrid');
+            grid.innerHTML = '';
+            if(!trainer) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const shift = shifts[trainer]; // Use permanent shift
+
+            if(!shift) {
+                grid.innerHTML = `<p class="col-span-full text-center text-gray-500">No permanent shift logged for this trainer.</p>`;
+                return;
+            }
+
+            let start = new Date(`2024-01-01T${shift.start}:00`);
+            let end = new Date(`2024-01-01T${shift.end}:00`);
+            if (end <= start) end.setDate(end.getDate() + 1);
+            
+            while(start < end) {
+                const timeStr = start.toTimeString().substring(0, 5);
+                const slotKey = `${trainer}_${today}_${timeStr}`;
+                
+                if (slots[slotKey] && !Array.isArray(slots[slotKey])) {
+                    slots[slotKey] = [slots[slotKey]]; 
+                }
+                
+                const clientsInSlot = slots[slotKey] || [];
+                const div = document.createElement('div');
+                
+                let statusClass = 'slot-empty';
+                if(clientsInSlot.length >= 3) statusClass = 'slot-filled';
+                else if(clientsInSlot.length > 0) statusClass = 'slot-partial';
+
+                div.className = `slot-btn p-3 rounded-lg text-center text-xs font-bold ${statusClass}`;
+                div.innerHTML = `<div class="text-sm">${timeStr}</div><div class="opacity-90">${clientsInSlot.length > 0 ? clientsInSlot.length + ' Client(s)' : 'Empty'}</div>`;
+                div.onclick = () => bookSlot(slotKey, clientsInSlot);
+                grid.appendChild(div);
+                start.setMinutes(start.getMinutes() + 30);
+            }
+        }
+
+        function bookSlot(key, currentClients) {
+            if(currentClients && currentClients.length > 0) {
+                const clientList = currentClients.map((c, i) => `${i + 1}. ${c}`).join('\n');
+                const action = prompt(`Current Clients:\n${clientList}\n\nAction:\n1. Add Client\n2. Remove Client\n3. Cancel`);
+                if(action === "1") {
+                    let masterList = masterClients.map((c, i) => `${i}: ${c}`).join('\n');
+                    let choice = prompt(`Available:\n${masterList}\n\nEnter number or type name:`);
+                    if(choice !== null && choice !== "") {
+                        let idx = parseInt(choice);
+                        let name = (!isNaN(idx) && masterClients[idx]) ? masterClients[idx] : choice;
+                        slots[key].push(name);
+                    }
+                } else if(action === "2") {
+                    let remIdx = prompt(`Enter number to remove (1-${currentClients.length}):`);
+                    let idx = parseInt(remIdx) - 1;
+                    if(!isNaN(idx) && currentClients[idx]) {
+                        slots[key].splice(idx, 1);
+                        if(slots[key].length === 0) delete slots[key];
+                    }
+                }
+            } else {
+                let masterList = masterClients.map((c, i) => `${i}: ${c}`).join('\n');
+                let choice = prompt(`Available:\n${masterList}\n\nEnter number or type name:`);
+                if(choice !== null && choice !== "") {
+                    let idx = parseInt(choice);
+                    let name = (!isNaN(idx) && masterClients[idx]) ? masterClients[idx] : choice;
+                    slots[key] = [name];
+                }
+            }
+            saveAndRefresh();
+            renderSlots();
+        }
+
+        function saveAndRefresh() {
+            localStorage.setItem('gymTrainers', JSON.stringify(trainers));
+            localStorage.setItem('gymShifts', JSON.stringify(shifts));
+            localStorage.setItem('gymSlots', JSON.stringify(slots));
+            localStorage.setItem('gymMasterClients', JSON.stringify(masterClients));
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('statTrainers').innerText = trainers.length;
+            document.getElementById('statClients').innerText = masterClients.length;
+            
+            let totalBooked = 0;
+            Object.values(slots).forEach(val => {
+                if(Array.isArray(val)) totalBooked += val.length;
+                else if(val) totalBooked += 1;
+            });
+            document.getElementById('statBookings').innerText = totalBooked;
+
+            const tList = document.getElementById('trainersList');
+            tList.innerHTML = '';
+            const sDrop = document.getElementById('shiftTrainer');
+            const slotDrop = document.getElementById('slotTrainerSelect');
+            sDrop.innerHTML = '<option value="">Select Trainer</option>';
+            slotDrop.innerHTML = '<option value="">Select Trainer to book slots</option>';
+
+            trainers.forEach((t, i) => {
+                tList.innerHTML += `<div class="flex justify-between bg-slate-800 p-2 rounded text-white"><span>${t}</span><i class="fas fa-trash text-red-500 cursor-pointer" onclick="deleteTrainer(${i})"></i></div>`;
+                sDrop.innerHTML += `<option value="${t}">${t}</option>`;
+                slotDrop.innerHTML += `<option value="${t}">${t}</option>`;
+            });
+
+            const cList = document.getElementById('clientsMasterList');
+            cList.innerHTML = '';
+            masterClients.forEach((c, i) => {
+                cList.innerHTML += `<div class="flex justify-between bg-slate-800 p-2 rounded text-white"><span>${c}</span><i class="fas fa-trash text-red-500 cursor-pointer" onclick="deleteClientFromMaster(${i})"></i></div>`;
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+
+            // 1. Summary Dashboard
+            const body = document.getElementById('dashboardBody');
+            body.innerHTML = '';
+            trainers.forEach(t => {
+                const shift = shifts[t]; // Permanent shift
+                let emptySlots = 0; let totalClients = 0;
+                if(shift) {
+                    let s = new Date(`2024-01-01T${shift.start}:00`);
+                    let e = new Date(`2024-01-01T${shift.end}:00`);
+                    if (e <= s) e.setDate(e.getDate() + 1);
+                    while(s < e) {
+                        const timeStr = s.toTimeString().substring(0, 5);
+                        const booked = slots[`${t}_${today}_${timeStr}`];
+                        if(!booked || (Array.isArray(booked) && booked.length === 0)) emptySlots++; 
+                        else totalClients += (Array.isArray(booked) ? booked.length : 1);
+                        s.setMinutes(s.getMinutes() + 30);
+                    }
+                }
+                const status = emptySlots > 0 ? `<span class="text-green-400 bg-green-900/30 px-2 py-1 rounded text-xs">✅ Available</span>` : `<span class="text-red-400 bg-red-900/30 px-2 py-1 rounded text-xs">❌ Full</span>`;
+                body.innerHTML += `<tr class="border-b border-slate-800 hover:bg-slate-800/50">
+                    <td class="py-4 px-2 font-medium">${t}</td><td class="py-4 px-2 text-xs">${shift ? shift.start + ' - ' + shift.end : 'No Shift'}</td>
+                    <td class="py-4 px-2 font-bold text-blue-400">${emptySlots} Slots</td><td class="py-4 px-2 font-bold text-purple-400">${totalClients} People</td>
+                    <td class="py-4 px-2">${status}</td></tr>`;
+            });
+
+            // 2. DETAILED MAPPING TABLE
+            const mappingBody = document.getElementById('mappingBody');
+            mappingBody.innerHTML = '';
+            trainers.forEach(t => {
+                const shift = shifts[t]; // Permanent shift
+                if(shift) {
+                    let s = new Date(`2024-01-01T${shift.start}:00`);
+                    let e = new Date(`2024-01-01T${shift.end}:00`);
+                    if (e <= s) e.setDate(e.getDate() + 1);
+                    
+                    while(s < e) {
+                        const timeStr = s.toTimeString().substring(0, 5);
+                        const booked = slots[`${t}_${today}_${timeStr}`];
+                        if(booked && Array.isArray(booked) && booked.length > 0) {
+                            mappingBody.innerHTML += `<tr class="border-b border-slate-800 hover:bg-slate-800/50">
+                                <td class="py-3 px-2 font-medium">${t}</td>
+                                <td class="py-3 px-2 text-blue-300 font-mono">${timeStr}</td>
+                                <td class="py-3 px-2 text-purple-400 font-bold">${booked.join(', ')}</td>
+                            </tr>`;
+                        }
+                        s.setMinutes(s.getMinutes() + 30);
+                    }
+                }
+            });
+        }
+
+        async function exportToExcel() {
+            const data = [];
+            const today = new Date().toISOString().split('T')[0];
+
+            trainers.forEach(t => {
+                const shift = shifts[t];
+                if(shift) {
+                    let s = new Date(`2024-01-01T${shift.start}:00`);
+                    let e = new Date(`2024-01-01T${shift.end}:00`);
+                    if (e <= s) e.setDate(e.getDate() + 1);
+                    
+                    while(s < e) {
+                        const timeStr = s.toTimeString().substring(0, 5);
+                        const booked = slots[`${t}_${today}_${timeStr}`];
+                        if(booked && Array.isArray(booked) && booked.length > 0) {
+                            data.push({
+                                "Trainer": t,
+                                "Slot Time": timeStr,
+                                "Clients": booked.join(", ")
+                            });
+                        }
+                        s.setMinutes(s.getMinutes() + 30);
+                    }
+                }
+            });
+
+            if(data.length === 0) return alert("No data to export today!");
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Detailed Mapping");
+            XLSX.writeFile(workbook, `Gym_Detailed_Report_${today}.xlsx`);
+        }
+    </script>
+</body>
+</html>
